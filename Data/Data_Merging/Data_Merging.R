@@ -3,6 +3,7 @@ library(dplyr)
 library(ggplot2)
 library(tidyverse)
 library(sf)
+library(raster)
 #Loading Data from Henry
 # file <- file.choose()
 # file_testing <- st_read(file)
@@ -30,13 +31,19 @@ PB_vnf_counties_join <- st_join(Counties_Spatial, PB_vnf_coordinates)
 #Joining ZIP and Jerry's Data(Permian Basin)
 PB_vnf_zip_join <- st_join(ZIP_valid, PB_vnf_coordinates)
 
+
+#converting it to "normal data frame" so that its possible to drop last column
+PB_vnf_counties_join <- PB_vnf_counties_join %>% as.data.frame()
+PB_vnf_zip_join <- PB_vnf_zip_join %>% as.data.frame()
+
+
+#dropping last column
 #Dropping SF objects in Counties and Zip
-# PB_vnf_counties_join <- PB_vnf_counties_join %>% select(-geometry)
-test <- PB_vnf_counties_join %>% dplyr::select(-1)
+PB_vnf_counties_join <- PB_vnf_counties_join[,-19]
+PB_vnf_zip_join <- PB_vnf_zip_join[,-18]
 
 
-# #Final Data_set
-PB_vnf_final <- merge(PB_vnf_counties_join, PB_vnf_counties_join, by = "longitude")
+final_data <- cbind(PB_vnf_counties_join, PB_vnf_zip_join$latitude)
 
 
 
