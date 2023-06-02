@@ -4,12 +4,9 @@ library(ggplot2)
 library(tidyverse)
 library(sf)
 library(raster)
-#Loading Data from Henry
-# file <- file.choose()
-# file_testing <- st_read(file)
 
-Counties_Spatial <- st_read("../HenryData/counties.shp")
-ZIP_Spatial <- st_read("../HenryData/zips.shp")
+Counties_Spatial <- st_read("../KenData/counties.shp")
+ZIP_Spatial <- st_read("../KenData/zips.shp")
 ZIP_valid <- subset(ZIP_Spatial, st_is_valid(ZIP_Spatial))
 
 
@@ -27,7 +24,6 @@ PB_vnf_counties_join <- st_join(PB_vnf_coordinates, Counties_Spatial)
 
 #Joining ZIP and Jerry's Data(Permian Basin) with Counties from previous line
 PB_final <- st_join(PB_vnf_coordinates, ZIP_valid)
-
 
 
 
