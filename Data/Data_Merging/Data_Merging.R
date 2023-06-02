@@ -36,8 +36,3 @@ PB_final <- st_join(PB_vnf_coordinates, ZIP_valid)
 
 
 
-
-
-
-
-
