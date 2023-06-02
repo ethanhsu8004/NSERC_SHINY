@@ -25,14 +25,10 @@ PB_vnf_counties_join <- st_join(PB_vnf_coordinates, Counties_Spatial)
 
 #Joining ZIP and Jerry's Data(Permian Basin) with Counties from previous line
 PB_final <- st_join(PB_vnf_coordinates, ZIP_valid)
-testing <- PB_final %>%
-  st_transform(crs = 4326) %>%  # Transform to WGS84 if needed
-  st_coordinates() %>%
-  as.data.frame() %>%
-  setNames(c("long", "lat"))
+
 
 #
-PB_final<- PB_final %>%st_transform(crs = 4326) %>%  # Transform to WGS84 if needed
+PB_final<- PB_final %>%st_transform(crs = 4326) %>% 
   mutate(
     long = st_coordinates(.)[, "X"],
     lat = st_coordinates(.)[, "Y"]
