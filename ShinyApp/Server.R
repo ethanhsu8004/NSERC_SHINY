@@ -6,9 +6,11 @@ library(sf)
 library(shiny)
 library(tidyverse)
 library(stringr)
-
+library(plotly)
 # Loading Data
 Data <- readRDS("data/VNF_data_final_2012-2022.rds")
+rownames(Data) = seq(length=nrow(Data))#this is used to reset the row numbers so that the table in ZIP
+                                         # does not show the row number (no other way to fix)
 
 Counties <- st_read("data/counties.shp")
 ZIP <- st_read("data/zips.shp")
@@ -18,7 +20,7 @@ permian.counties <- Data %>% filter(basin == "Permian") %>%
   pull(county) %>% unique() %>% sort() %>% as.list()
 
 western_gulf.counties <- Data %>% filter(basin == "Western Gulf")%>% 
-  pull(county) %>% unique() %>% sort() %>% as.list()
+  pull(county) %>% unique() %>% sort() %>% as.list() 
 
 #Creating ZIP CODES
 permian.ZipCodes <-
@@ -61,7 +63,7 @@ server <- function(input, output, session) {
   
   #Logic for checkboxes for Zip Codes
   observeEvent({input$checkboxes2}, {
-    print('test')
+    
     #Having no options selected
     if(is.null(input$checkboxes2)){
       updateSelectizeInput(session, "Zip", selected = "Pick An Option Above",
@@ -129,8 +131,18 @@ server <- function(input, output, session) {
 
   #data after filtering for time (ZIP)
   data_filtered_time_zip = reactive({
-    Data %>% filter(zip %in% input$Zip) %>% 
-      filter(date >= input$zip_date_range[1], date <= input$zip_date_range[2])
+    Data %>%  
+      filter(date >= input$zip_date_range[1], date <= input$zip_date_range[2])%>%
+      st_as_sf(coords = c("long", "lat"), crs = 4326, remove = FALSE) %>%
+      st_transform(crs = 32613) %>%
+      st_join( #joins based off the buffer region
+        filter(ZIP, zip %in% input$Zip) %>%
+          st_transform(crs = 32613) %>%
+          st_buffer(dist = input$zip_distance * 1e3) %>%
+          select(zip, geometry),
+        join = st_intersects, left = FALSE) %>%
+      st_drop_geometry() %>% data.table()
+    
   })
   
   
@@ -145,36 +157,146 @@ server <- function(input, output, session) {
   })
   
   
-  #output for barplot
-  output$county_bar_plot = renderPlot(
-    if (is.null(input$checkboxes)){
-      plot.new()
-      text(0.5, 0.5, "Please select a Basin", cex = 2)
-    }
-    
-    else{
-      data <- data_filtered_time_county() %>% group_by(date) %>% summarize(n = n())
-      print(data)
-      ggplot(data = data, aes(date)) + geom_histogram()
-      
-    }
-    
-  )
+  #county_table
+  output$county_table = renderTable({
+    data_filtered_time_county() %>% 
+      group_by(County = county) %>% 
+      summarize(Flares = n(), .groups = "drop")
+  })
   
-  output$zip_bar_plot = renderPlot(
-    if(is.null(input$checkboxes2)){
-      plot.new()
-      text(0.5, 0.5, "Please select a Basin", cex = 2)
+  #zip_table
+  output$zip_table = renderTable({
+    data_filtered_time_zip() %>% 
+      group_by(County = county) %>% 
+      summarize(Flares = n(), .groups = "drop")
+  })
+  
+  #reference tab for Zip Code (NEED TO FIX IT SO THAT )
+  output$zips_tab = renderReactable({
+    z =  Data%>% mutate(county = substr(county, 1, nchar(county) - 4)) %>% 
+      select(zip, basin, state, county) 
+    
+    
+    reactable(data = z, searchable = TRUE)
+
+  })
+  
+  
+  #bar_plot for county
+  output$county_bar_plot = renderPlotly({
+    if (is.null(input$checkboxes)){
       
     }
-    
+    else if(input$county_date_range[2] - input$county_date_range[1] < 181){
+      data = data_filtered_time_county() %>%
+        group_by(date) %>%
+        summarize(n = n(), .groups = "drop") %>%
+        mutate(time = as.Date(cut(date, "week")))
+
+      v<- ggplot() +
+        geom_bar(data = data, aes(x = time, weight = n), fill = "firebrick") +
+        scale_x_date(labels = scales::date_format("%b"),
+                     breaks = "2 month", expand = c(0.01, 0.01)) +
+        scale_y_continuous(expand = c(0.01, 0.01)) +
+        labs(x = NULL, y = NULL, title = "Weekly # of UOG flares") +
+        theme_bw() +
+        theme(plot.title = element_text(hjust = 0.5))
+      ggplotly(v, tooltip = c("text", "weight", "y", "n"))
+    }
+    else if(input$county_date_range[2] - input$county_date_range[1]  < 732) {
+      data <- data_filtered_time_county() %>% mutate(date = as.Date(date)) %>% mutate(year_month = format(date, format ="%Y-%m"))       #grouping by months
+      data <- data %>% group_by(year_month) %>% summarise(n = n())        #finding the count based off the months
+      data <- data %>% mutate(year_month = as.Date(paste(year_month, "01", sep = "-"), format = "%Y-%m-%d"))       #converting back to date object
+      
+      v <- ggplot() +
+        geom_bar(data = data, aes(x = year_month, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
+        scale_x_date(labels = scales::date_format("%b-%Y"),
+                     breaks = "3 month", expand = c(0.01, 0.01)) +
+        scale_y_continuous(expand = c(0.01, 0.01)) +
+      labs(x = NULL, y = NULL, title = "Monthly # of UOG flares") +
+      theme_bw() +
+      theme(plot.title = element_text(hjust = 0.5))
+
+      ggplotly(v, tooltip = "text")
+
+}
     else{
-      data <- data_filtered_time_zip() %>% group_by(date) %>% summarize(n = n())
       
-      ggplot(data = data, aes(date)) + geom_histogram()
+      data <- data_filtered_time_county() %>% mutate(as.Date(date)) %>% mutate(year = format(date, format = "%Y"))
+      data <- data %>% group_by(year) %>% summarise(n = n())
+      data <- data %>% mutate(year = as.Date(paste(year, "1", "1", sep = "-"), format = "%Y-%m-%d"))
       
-    }
+      v <- ggplot() +
+        geom_bar(data = data, aes(x = year, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
+        scale_x_date(labels = scales::date_format("%Y"),
+                     breaks = "1 year", expand = c(0.01, 0.01)) +
+        scale_y_continuous(expand = c(0.01, 0.01)) +
+        labs(x = NULL, y = NULL, title = "Annual # of UOG flares") +
+        theme_bw() +
+        theme(plot.title = element_text(hjust = 0.5))
+      ggplotly(v, tooltip = "text")
+    }})
+  
+  
+  #bar plot for zip code
+  output$zip_bar_plot = renderPlotly(
+    {
+      if (is.null(input$checkboxes2)){
+        input$county_date_range[2]
+        text(0.5, 0.5, "Please select a Basin", cex = 2)
+      }
+      else if(input$zip_date_range[2] - input$zip_date_range[1] < 181){
+        data = data_filtered_time_zip() %>%
+          group_by(date) %>%
+          summarize(n = n(), .groups = "drop") %>%
+          mutate(time = as.Date(cut(date, "week")))
+        
+        
+        v <- ggplot() +
+          geom_bar(data = data, aes(x = time, weight = n), fill = "firebrick") +
+          scale_x_date(labels = scales::date_format("%b"),
+                       breaks = "2 month", expand = c(0.01, 0.01)) +
+          scale_y_continuous(expand = c(0.01, 0.01)) +
+          labs(x = NULL, y = NULL, title = "Weekly # of UOG flares") +
+          theme_bw() +
+          theme(plot.title = element_text(hjust = 0.5))
+        ggplotly(v)
+      }
+      
+      else if(input$zip_date_range[2] - input$zip_date_range[1]  < 732) {
+        
+        data <- data_filtered_time_zip() %>% mutate(date = as.Date(date)) %>% mutate(year_month = format(date, format ="%Y-%m"))       #grouping by months
+        data <- data %>% group_by(year_month) %>% summarise(n = n())        #finding the count based off the months
+        data <- data %>% mutate(year_month = as.Date(paste(year_month, "01", sep = "-"), format = "%Y-%m-%d"))       #converting back to date object
+      v<-  ggplot() +
+          geom_bar(data = data, aes(x = year_month, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
+          scale_x_date(labels = scales::date_format("%b-%Y"),
+                       breaks = "3 month", expand = c(0.01, 0.01)) +
+          scale_y_continuous(expand = c(0.01, 0.01)) +
+          labs(x = NULL, y = NULL, title = "Monthly # of UOG flares") +
+          theme_bw() +
+          theme(plot.title = element_text(hjust = 0.5))
+      ggplotly(v, tooltip = "text")
+      }
     
+      else{
+        # data = data_filtered_time_zip() %>%
+        #   group_by(date) %>%
+        #   summarize(n = n(), .groups = "drop") %>%
+        #   mutate(time = as.Date(cut(date, "year")))
+        data <- data_filtered_time_county() %>% mutate(as.Date(date)) %>% mutate(year = format(date, format = "%Y"))
+        data <- data %>% group_by(year) %>% summarise(n = n())
+        data <- data %>% mutate(year = as.Date(paste(year, "1", "1", sep = "-"), format = "%Y-%m-%d"))
+        v <- ggplot() + geom_bar(data = data, aes(x = year, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
+          scale_x_date(labels = scales::date_format("%Y"),
+                       breaks = "1 year", expand = c(0.01, 0.01)) +
+          scale_y_continuous(expand = c(0.01, 0.01)) +
+          labs(x = NULL, y = NULL, title = "Annual # of UOG flares") +
+          theme_bw() +
+          theme(plot.title = element_text(hjust = 0.5))
+        ggplotly(v, tooltip = "text")
+      }}
+  
   )
   
   #logic for the submit button (County)
@@ -205,8 +327,10 @@ server <- function(input, output, session) {
   })
   #Submit Button (ZIP)
   observeEvent(input$submit_button_zip, {
-    data_filtered_with_time <- data_filtered_time_zip()
+    data_filtered_with_time <- data_filtered_time_zip() 
+    print(nrow(data_filtered_with_time))
     curr_zip <- current_zip()
+  
     
     cty_bbox = curr_zip %>% st_bbox() %>% as.list() #converts to spatial box
     lon_min = min(data_filtered_with_time$long, cty_bbox$xmin)  
@@ -214,10 +338,19 @@ server <- function(input, output, session) {
     lon_max = max(data_filtered_with_time$long, cty_bbox$xmax)
     lat_max = max(data_filtered_with_time$lat, cty_bbox$ymax)
     
-    leafletProxy("shiny_map_zip", data = data_filtered_with_time) %>%
+    
+    curr_zip_range = current_zip() %>%
+      st_transform(crs = 32613) %>%
+      st_buffer(dist = input$zip_distance * 1e3) %>%
+      st_transform(crs = 4326)
+    
+    
+    leafletProxy("shiny_map_zip", data = data_filtered_time_zip()) %>%
       clearShapes() %>% clearMarkerClusters()%>%
       addPolygons(data = curr_zip,
                   weight = 1, opacity = 1) %>%
+      addPolygons(data = curr_zip_range, opacity = .1, fillOpacity = .1,
+                  weight = 1, color = "red") %>%
       addCircleMarkers(
         lng = ~long, lat = ~lat,
         color = "#d62728", radius = 5,

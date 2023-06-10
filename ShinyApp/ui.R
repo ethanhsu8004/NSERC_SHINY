@@ -5,6 +5,7 @@ library(reactable)
 library(sf)
 library(shiny)
 library(tidyverse)
+library(plotly)
 
 # Loading Data
 Data <- readRDS("data/VNF_data_final_2012-2022.rds")
@@ -51,14 +52,14 @@ ui <- navbarPage(
           label = "Date range",
           start = "
 2012 - 03 - 01",
-          end = "2012 - 12 - 31"
+          end = "2012 - 05 - 31"
         ),
         actionButton('submitbutton', "Find UOG Flares")
       ),
       #output
       mainPanel(tabsetPanel(tabPanel(
         "Map", leafletOutput("shiny_map", width = "100%", height = "600")
-      ), tabPanel("Plot",plotOutput("county_bar_plot"))))
+      ), tabPanel("Summary",tableOutput("county_table"), plotlyOutput("county_bar_plot"))))
     )
   ),
   
@@ -86,12 +87,16 @@ ui <- navbarPage(
 2012 - 03 - 01",
           end = "2012 - 12 - 31"
         ),
+        sliderInput(inputId = "zip_distance", label = "Distance (km)", min = 1, max = 100,
+                    value = 10, step = 1), 
         
         actionButton('submit_button_zip', "Find UOG Flares")
       ),
       mainPanel(tabsetPanel(tabPanel(
         "Map", leafletOutput("shiny_map_zip", width = "100%", height = "600")
-      ), tabPanel("Plot", plotOutput("zip_bar_plot")))
+      ), tabPanel("Summary",tableOutput("zip_table"), plotlyOutput("zip_bar_plot")), tabPanel("Reference",  width = 12, align = "center",
+                                                                                              h4("Table of ZIP codes within study area"),
+                                                                                              reactableOutput("zips_tab")))
     
  )))
 ))
