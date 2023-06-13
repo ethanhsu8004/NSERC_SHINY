@@ -6,7 +6,7 @@ library(sf)
 library(shiny)
 library(tidyverse)
 library(plotly)
-
+library(rsconnect)
 # Loading Data
 Data <- readRDS("data/VNF_data_final_2012-2022.rds")
 
@@ -28,7 +28,7 @@ western_gulf.ZipCodes <-
 #ui
 ui <- navbarPage(
   tags$head(includeCSS("styles.css")),
-  title = "UOG flares",
+  title = "UOG Flares",
   tabsetPanel(
   tabPanel(
     title = "County View",
@@ -52,15 +52,15 @@ ui <- navbarPage(
           label = "Date range",
           start = "
 2012 - 03 - 01",
-          end = "2012 - 05 - 31"
+          end = "2014 - 12 - 31"
         ),
-        actionButton('submitbutton', "Find UOG Flares")
+        actionButton('submitbutton', "Find UOG Flares", class = "county_submit_button")
       ),
       #output
       mainPanel(tabsetPanel(tabPanel(
         "Map", leafletOutput("shiny_map", width = "100%", height = "600")
-      ), tabPanel("Summary",tableOutput("county_table"), plotlyOutput("county_bar_plot"))))
-    )
+      ), tabPanel("Summary",tableOutput("county_table"), uiOutput("county_bar_plot"))))
+    ),
   ),
   
   #ZIP view tab
@@ -85,16 +85,16 @@ ui <- navbarPage(
           label = "Date range",
           start = "
 2012 - 03 - 01",
-          end = "2012 - 12 - 31"
+          end = "2014 - 12 - 31"
         ),
-        sliderInput(inputId = "zip_distance", label = "Distance (km)", min = 1, max = 100,
-                    value = 10, step = 1), 
+        sliderInput(inputId = "zip_distance", label = "Distance (km)", min = 0, max = 25,
+                    value = 0, step = 1), 
         
-        actionButton('submit_button_zip', "Find UOG Flares")
+        actionButton('submit_button_zip', "Find UOG Flares", class = "zip_submit_button")
       ),
       mainPanel(tabsetPanel(tabPanel(
         "Map", leafletOutput("shiny_map_zip", width = "100%", height = "600")
-      ), tabPanel("Summary",tableOutput("zip_table"), plotlyOutput("zip_bar_plot")), tabPanel("Reference",  width = 12, align = "center",
+      ), tabPanel("Summary",tableOutput("zip_table"), uiOutput("zip_bar_plot")), tabPanel("Reference",  width = 12, align = "center",
                                                                                               h4("Table of ZIP codes within study area"),
                                                                                               reactableOutput("zips_tab")))
     

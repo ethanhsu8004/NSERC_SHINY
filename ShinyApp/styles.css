@@ -6,6 +6,7 @@
 .shiny-date-range-input .input-group-addon {
   height: 25px;
 }
+
 .shiny-date-range-input.form-control {
   height: 25px;
   padding: 1px 6px;
@@ -14,4 +15,9 @@
 .table-condensed {
   font-size: 10px;
   height: 100px;
+}
+
+.zip_submit_button, .county_submit_button{
+  background-color: #4682B4;
+  color: white;
 }

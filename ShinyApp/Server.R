@@ -173,27 +173,90 @@ server <- function(input, output, session) {
   
   #reference tab for Zip Code (NEED TO FIX IT SO THAT )
   output$zips_tab = renderReactable({
-    z =  Data%>% mutate(county = substr(county, 1, nchar(county) - 4)) %>% 
-      select(zip, basin, state, county) 
+    z =  Data%>% mutate(county = substr(county, 1, nchar(county) - 4)) %>%   #updated the county column and get rid of duplicates
+      select(zip, basin, state, county) %>% distinct()
     
-    
-    reactable(data = z, searchable = TRUE)
+
+    reactable(data = z, searchable = TRUE,
+              height = 500,
+              highlight = TRUE)
 
   })
   
   
-  #bar_plot for county
-  output$county_bar_plot = renderPlotly({
-    if (is.null(input$checkboxes)){
-      
-    }
-    else if(input$county_date_range[2] - input$county_date_range[1] < 181){
-      data = data_filtered_time_county() %>%
+
+
+  output$county_bar_plot_non_error = renderPlotly({
+   if(input$county_date_range[2] - input$county_date_range[1] < 181){
+            data = data_filtered_time_county() %>%
+              group_by(date) %>%
+              summarize(n = n(), .groups = "drop") %>%
+              mutate(time = as.Date(cut(date, "week")))
+
+            v<- ggplot() +
+              geom_bar(data = data, aes(x = time, weight = n), fill = "firebrick") +
+              scale_x_date(labels = scales::date_format("%b"),
+                           breaks = "2 month", expand = c(0.01, 0.01)) +
+              scale_y_continuous(expand = c(0.01, 0.01)) +
+              labs(x = NULL, y = NULL, title = "Weekly # of UOG flares") +
+              theme_bw() +
+              theme(plot.title = element_text(hjust = 0.5))
+            ggplotly(v, tooltip = c("text", "weight", "y", "n"))
+          }
+          else if(input$county_date_range[2] - input$county_date_range[1]  < 732) {
+            data <- data_filtered_time_county() %>% mutate(date = as.Date(date)) %>% mutate(year_month = format(date, format ="%Y-%m"))       #grouping by months
+            data <- data %>% group_by(year_month) %>% summarise(n = n())        #finding the count based off the months
+            data <- data %>% mutate(year_month = as.Date(paste(year_month, "01", sep = "-"), format = "%Y-%m-%d"))       #converting back to date object
+
+            v <- ggplot() +
+              geom_bar(data = data, aes(x = year_month, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
+              scale_x_date(labels = scales::date_format("%b-%Y"),
+                           breaks = "3 month", expand = c(0.01, 0.01)) +
+              scale_y_continuous(expand = c(0.01, 0.01)) +
+            labs(x = NULL, y = NULL, title = "Monthly # of UOG flares") +
+            theme_bw() +
+            theme(plot.title = element_text(hjust = 0.5))
+
+            ggplotly(v, tooltip = "text")}
+        else{
+
+          data <- data_filtered_time_county() %>% mutate(as.Date(date)) %>% mutate(year = format(date, format = "%Y"))
+          data <- data %>% group_by(year) %>% summarise(n = n())
+          data <- data %>% mutate(year = as.Date(paste(year, "1", "1", sep = "-"), format = "%Y-%m-%d"))
+
+          v <- ggplot() +
+            geom_bar(data = data, aes(x = year, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
+            scale_x_date(labels = scales::date_format("%Y"),
+                         breaks = "1 year", expand = c(0.01, 0.01)) +
+            scale_y_continuous(expand = c(0.01, 0.01)) +
+            labs(x = NULL, y = NULL, title = "Annual # of UOG flares") +
+            theme_bw() +
+            theme(plot.title = element_text(hjust = 0.5))
+          ggplotly(v, tooltip = "text")}}
+  )
+
+  
+#logic for not having a basin selected
+output$county_bar_plot = renderUI(
+  if (is.null(input$checkboxes)){
+    print("Please select a Basin")
+  }
+  else{
+    plotlyOutput("county_bar_plot_non_error")
+  }
+)
+  
+
+#render the table for when we have a basin selected
+output$zip_bar_plot_non_error = renderPlotly(
+  {if(input$zip_date_range[2] - input$zip_date_range[1] < 181){
+      data = data_filtered_time_zip() %>%
         group_by(date) %>%
         summarize(n = n(), .groups = "drop") %>%
         mutate(time = as.Date(cut(date, "week")))
-
-      v<- ggplot() +
+      
+      
+      v <- ggplot() +
         geom_bar(data = data, aes(x = time, weight = n), fill = "firebrick") +
         scale_x_date(labels = scales::date_format("%b"),
                      breaks = "2 month", expand = c(0.01, 0.01)) +
@@ -201,33 +264,30 @@ server <- function(input, output, session) {
         labs(x = NULL, y = NULL, title = "Weekly # of UOG flares") +
         theme_bw() +
         theme(plot.title = element_text(hjust = 0.5))
-      ggplotly(v, tooltip = c("text", "weight", "y", "n"))
+      ggplotly(v)
     }
-    else if(input$county_date_range[2] - input$county_date_range[1]  < 732) {
-      data <- data_filtered_time_county() %>% mutate(date = as.Date(date)) %>% mutate(year_month = format(date, format ="%Y-%m"))       #grouping by months
+    
+    else if(input$zip_date_range[2] - input$zip_date_range[1]  < 732) {
+      
+      data <- data_filtered_time_zip() %>% mutate(date = as.Date(date)) %>% mutate(year_month = format(date, format ="%Y-%m"))       #grouping by months
       data <- data %>% group_by(year_month) %>% summarise(n = n())        #finding the count based off the months
       data <- data %>% mutate(year_month = as.Date(paste(year_month, "01", sep = "-"), format = "%Y-%m-%d"))       #converting back to date object
-      
-      v <- ggplot() +
+      v<-  ggplot() +
         geom_bar(data = data, aes(x = year_month, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
         scale_x_date(labels = scales::date_format("%b-%Y"),
                      breaks = "3 month", expand = c(0.01, 0.01)) +
         scale_y_continuous(expand = c(0.01, 0.01)) +
-      labs(x = NULL, y = NULL, title = "Monthly # of UOG flares") +
-      theme_bw() +
-      theme(plot.title = element_text(hjust = 0.5))
-
+        labs(x = NULL, y = NULL, title = "Monthly # of UOG flares") +
+        theme_bw() +
+        theme(plot.title = element_text(hjust = 0.5))
       ggplotly(v, tooltip = "text")
-
-}
+    }
+    
     else{
-      
-      data <- data_filtered_time_county() %>% mutate(as.Date(date)) %>% mutate(year = format(date, format = "%Y"))
+      data <- data_filtered_time_zip() %>% mutate(as.Date(date)) %>% mutate(year = format(date, format = "%Y"))
       data <- data %>% group_by(year) %>% summarise(n = n())
       data <- data %>% mutate(year = as.Date(paste(year, "1", "1", sep = "-"), format = "%Y-%m-%d"))
-      
-      v <- ggplot() +
-        geom_bar(data = data, aes(x = year, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
+      v <- ggplot() + geom_bar(data = data, aes(x = year, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
         scale_x_date(labels = scales::date_format("%Y"),
                      breaks = "1 year", expand = c(0.01, 0.01)) +
         scale_y_continuous(expand = c(0.01, 0.01)) +
@@ -235,69 +295,19 @@ server <- function(input, output, session) {
         theme_bw() +
         theme(plot.title = element_text(hjust = 0.5))
       ggplotly(v, tooltip = "text")
-    }})
+    }}
   
+)
+output$zip_bar_plot = renderUI(
+  if (is.null(input$checkboxes2)){
+    print("Please select a Basin")
+  }
+  else{
+    plotlyOutput("zip_bar_plot_non_error")
+  }
+)
+ 
   
-  #bar plot for zip code
-  output$zip_bar_plot = renderPlotly(
-    {
-      if (is.null(input$checkboxes2)){
-        input$county_date_range[2]
-        text(0.5, 0.5, "Please select a Basin", cex = 2)
-      }
-      else if(input$zip_date_range[2] - input$zip_date_range[1] < 181){
-        data = data_filtered_time_zip() %>%
-          group_by(date) %>%
-          summarize(n = n(), .groups = "drop") %>%
-          mutate(time = as.Date(cut(date, "week")))
-        
-        
-        v <- ggplot() +
-          geom_bar(data = data, aes(x = time, weight = n), fill = "firebrick") +
-          scale_x_date(labels = scales::date_format("%b"),
-                       breaks = "2 month", expand = c(0.01, 0.01)) +
-          scale_y_continuous(expand = c(0.01, 0.01)) +
-          labs(x = NULL, y = NULL, title = "Weekly # of UOG flares") +
-          theme_bw() +
-          theme(plot.title = element_text(hjust = 0.5))
-        ggplotly(v)
-      }
-      
-      else if(input$zip_date_range[2] - input$zip_date_range[1]  < 732) {
-        
-        data <- data_filtered_time_zip() %>% mutate(date = as.Date(date)) %>% mutate(year_month = format(date, format ="%Y-%m"))       #grouping by months
-        data <- data %>% group_by(year_month) %>% summarise(n = n())        #finding the count based off the months
-        data <- data %>% mutate(year_month = as.Date(paste(year_month, "01", sep = "-"), format = "%Y-%m-%d"))       #converting back to date object
-      v<-  ggplot() +
-          geom_bar(data = data, aes(x = year_month, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
-          scale_x_date(labels = scales::date_format("%b-%Y"),
-                       breaks = "3 month", expand = c(0.01, 0.01)) +
-          scale_y_continuous(expand = c(0.01, 0.01)) +
-          labs(x = NULL, y = NULL, title = "Monthly # of UOG flares") +
-          theme_bw() +
-          theme(plot.title = element_text(hjust = 0.5))
-      ggplotly(v, tooltip = "text")
-      }
-    
-      else{
-        # data = data_filtered_time_zip() %>%
-        #   group_by(date) %>%
-        #   summarize(n = n(), .groups = "drop") %>%
-        #   mutate(time = as.Date(cut(date, "year")))
-        data <- data_filtered_time_county() %>% mutate(as.Date(date)) %>% mutate(year = format(date, format = "%Y"))
-        data <- data %>% group_by(year) %>% summarise(n = n())
-        data <- data %>% mutate(year = as.Date(paste(year, "1", "1", sep = "-"), format = "%Y-%m-%d"))
-        v <- ggplot() + geom_bar(data = data, aes(x = year, weight = n, text = paste('<br>Count: ', n)), fill = "firebrick") +
-          scale_x_date(labels = scales::date_format("%Y"),
-                       breaks = "1 year", expand = c(0.01, 0.01)) +
-          scale_y_continuous(expand = c(0.01, 0.01)) +
-          labs(x = NULL, y = NULL, title = "Annual # of UOG flares") +
-          theme_bw() +
-          theme(plot.title = element_text(hjust = 0.5))
-        ggplotly(v, tooltip = "text")
-      }}
-  
-  )
   
   #logic for the submit button (County)
   observeEvent(input$submitbutton,{
