@@ -54,6 +54,11 @@ EF_final<- EF_final %>%st_transform(crs = 4326) %>%
 EF_final <- EF_final[, -21]
 
 
+#Filtering out temperatures
+
+PB_final <- PB_final %>% filter(temp_bb > 1600)
+EF_final <- EF_final %>% filter(temp_bb > 1600)
+
 #Selecting only columns of interest
 PB_final <- PB_final %>% dplyr::select(vnf_id, date, long, lat, zip, state, basin, county) 
 EF_final <- EF_final %>% dplyr::select(vnf_id, date, county.y, zip, basin, long, lat, state.y)%>%rename(state = state.y, county = county.y)
@@ -62,10 +67,14 @@ EF_final <- EF_final %>% dplyr::select(vnf_id, date, county.y, zip, basin, long,
 PB_final <- na.omit(PB_final)
 EF_final <- na.omit(EF_final)
 
+#Filter Out Temperatures 
+
 #Combining the Data
 Final_Data <- rbind(PB_final, EF_final)
 
 #Writing the file
+write_rds(EF_final, "EF_final.rds")
+write_rds(PB_final, "PB_final.rds")
 write_rds(Final_Data, "VNF_data_final_2012-2022.rds")
 
 
