@@ -17,7 +17,7 @@ ZIP <- st_read("data/zips.shp")
 
 #Creating Counties
 permian.counties <- Data %>% filter(basin == "Permian") %>% 
-  pull(county) %>% unique() %>% sort() %>% as.list()
+pull(county) %>% unique() %>% sort() %>% as.list()
 
 western_gulf.counties <- Data %>% filter(basin == "Western Gulf")%>% 
   pull(county) %>% unique() %>% sort() %>% as.list() 
@@ -139,12 +139,11 @@ server <- function(input, output, session) {
         filter(ZIP, zip %in% input$Zip) %>%
           st_transform(crs = 32613) %>%
           st_buffer(dist = input$zip_distance * 1e3) %>%
-          select(zip, geometry),
+          dplyr::select(zip, geometry),
         join = st_intersects, left = FALSE) %>%
       st_drop_geometry() %>% data.table()
     
   })
-  
   
   #data after choosing certain counties
   current_county = reactive({
@@ -174,7 +173,7 @@ server <- function(input, output, session) {
   #reference tab for Zip Code (NEED TO FIX IT SO THAT )
   output$zips_tab = renderReactable({
     z =  Data%>% mutate(county = substr(county, 1, nchar(county) - 4)) %>%   #updated the county column and get rid of duplicates
-      select(zip, basin, state, county) %>% distinct()
+      dplyr::select(zip, basin, state, county) %>% distinct()
     
 
     reactable(data = z, searchable = TRUE,
