@@ -8,7 +8,7 @@ library(tidyverse)
 library(stringr)
 library(plotly)
 # Loading Data
-Data <- readRDS("data/VNF_data_final_2012-2022.rds")
+Data <- readRDS("data/VNF_data_final_2012-2023.rds")
 rownames(Data) = seq(length=nrow(Data))#this is used to reset the row numbers so that the table in ZIP
                                          # does not show the row number (no other way to fix)
 

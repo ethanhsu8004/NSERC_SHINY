@@ -52,7 +52,7 @@ vnf.cols = c('date_mscan', 'lon_gmtco', 'lat_gmtco', 'temp_bb', 'temp_bkg',
              'esf_bb', 'rhi', 'rh', 'area_pixel', 'area_bb', 'cloud_mask')
 
 #end date currently
-end_date = as.Date("2023-06-15")
+end_date = as.Date("2023-06-26")
 
 vnf.data.exist = file.exists(paste0(code.dir, "ef_vnf/ef-vnf.rds")) #change this line
 
@@ -119,6 +119,8 @@ for (date in 1:length(vnf.dates)){
   
   file.remove(csv.name)
 }
+
+
 
 file <- saveRDS(vnf, file = "ef_vnf/ef_vnf.rds")
 

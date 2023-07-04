@@ -8,7 +8,7 @@ library(tidyverse)
 library(plotly)
 library(rsconnect)
 # Loading Data
-Data <- readRDS("data/VNF_data_final_2012-2022.rds")
+Data <- readRDS("data/VNF_data_final_2012-2023.rds")
 
 #Sorting Basin Data (Counties)
 permian.counties <- Data %>% filter(basin == "Permian") %>% 
