@@ -128,7 +128,7 @@ Data_filter_2016_2022$county.y <-  paste(str_to_title(Data_filter_2016_2022$coun
 
 Data_final_2016_2022 <- Data_filter_2016_2022 %>%st_transform(crs = 4326) %>% as.data.frame() 
 
-Data_final_2016_2022$basin <-  Ken_2012_2016_non_na$basin.y[match(Data_final_2016_2022$county.y,Ken_2012_2016_non_na$county.y)]
+Data_final_2016_2022$basin <-  Ken_2012_2016_non_na$basin.y[match(Data_final_2016_2022$county.y,Ken_2012_2016_non_na$county)]
 Data_final_2016_2022 <- Data_final_2016_2022 %>% rename(long = "vnf_lon", lat = "vnf_lat", county = "county.y", state = "state.y")
 Data_final_2016_2022 <- Data_final_2016_2022 %>% dplyr::select("vnf_id", "date", "long", "lat", "zip", "state", "basin", "county")
 
@@ -145,5 +145,5 @@ Ethan_2022_2023_FINAL <- Ethan_2022_2023_non_NA %>% dplyr::select("vnf_id", "dat
 
 
 #MERGE ALL THE ABOVE DATA INTO ONE DATAFRAME
-Final_Data_2012_2023 <- rbind(Data_final_2016_2022, Ken_2012_2016_FINAL, Ethan_2022_2023_FINAL)
+Final_Data_2012_2023 <- rbind(Ken_2012_2016_FINAL, Data_final_2016_2022, Ethan_2022_2023_FINAL)
 saveRDS(Final_Data_2012_2023, "VNF_data_final_2012-2023.rds")
