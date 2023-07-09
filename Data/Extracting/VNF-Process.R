@@ -29,31 +29,34 @@ EF_data$basin <- "Western Gulf"
 Data <- rbind(PB_data, EF_data) #Joining the two datasets
 
 
-Data$uog_lat <- Data$lat
-Data$uog_lon <- Data$lon
+# Data$uog_lat <- Data$lat
+# Data$uog_lon <- Data$lon
 
-Data <- st_as_sf(Data, coords = c("uog_lon", "uog_lat"), crs = 4326)
+# Data <- st_as_sf(Data, coords = c("uog_lon", "uog_lat"), crs = 4326)
+# 
+# 
+# #Merging the wells data
+# Wells_Merged <- rbind(PB_wells, EF_wells)
+# Wells_Merged$lat <- Wells_Merged$uog_lat
+# Wells_Merged$long <- Wells_Merged$uog_lon
+# Wells_Merged <- st_as_sf(Wells_Merged, coords = c("uog_lon", "uog_lat"), crs = 4326)
+# 
+# 
+# Data_with_wells_distance <- st_join(Data, Wells_Merged, join = st_is_within_distance, dist = 1e3) 
+# Data_with_wells_distance <- Data_with_wells_distance %>% distinct(vnf_id, .keep_all = TRUE)
+# 
+# #Getting rid of flaring not near wells
+# Data_with_wells_distance <- Data_with_wells_distance %>% filter(!drill_type == "NA")
+# Data_with_wells_distance <- as.data.frame(Data_with_wells_distance)
+# Data_with_wells_distance <- Data_with_wells_distance[1:(length(Data_with_wells_distance)-11)]
+# Data_with_wells_distance <-Data_with_wells_distance %>% rename(lat = "lat.x") 
 
 
-#Merging the wells data
-Wells_Merged <- rbind(PB_wells, EF_wells)
-Wells_Merged$lat <- Wells_Merged$uog_lat
-Wells_Merged$long <- Wells_Merged$uog_lon
-Wells_Merged <- st_as_sf(Wells_Merged, coords = c("uog_lon", "uog_lat"), crs = 4326)
+# Data.clust.list <- Data_with_wells_distance %>% mutate(year = year(date)) 
+# Data.clust.list <- split(Data.clust.list,list(Data.clust.list$basin, Data.clust.list$year))
 
-
-Data_with_wells_distance <- st_join(Data, Wells_Merged, join = st_is_within_distance, dist = 1e3) 
-Data_with_wells_distance <- Data_with_wells_distance %>% distinct(vnf_id, .keep_all = TRUE)
-
-#Getting rid of flaring not near wells
-Data_with_wells_distance <- Data_with_wells_distance %>% filter(!drill_type == "NA")
-Data_with_wells_distance <- as.data.frame(Data_with_wells_distance)
-Data_with_wells_distance <- Data_with_wells_distance[1:(length(Data_with_wells_distance)-11)]
-Data_with_wells_distance <-Data_with_wells_distance %>% rename(lat = "lat.x") 
-
-
-Data.clust.list <- Data_with_wells_distance %>% mutate(year = year(date)) 
-Data.clust.list <- split(Data.clust.list,list(Data.clust.list$basin, Data.clust.list$year))
+Data.clust.list <- Data %>% mutate(year = year(date)) 
+Data.clust.list <- split(Data.clust.list, list(Data.clust.list$basin, Data.clust.list$year))
 
 minpts.grid = 3:8 #the minpts used in HDBSCAN from 3-8 inclusive
 
@@ -113,6 +116,6 @@ for (i in 2:length(Data.clust.list)){
 #Filter out Non clustered (cluster = 0)
 Output_Data <- Output_Data %>% filter(clustered != 0)
 
-Final_Data <- merge(Output_Data, Data_with_wells_distance, by = "vnf_id")
+Final_Data <- merge(Output_Data, Data, by = "vnf_id")
 saveRDS(Final_Data, "VNF_2022-2023.rds")
 
