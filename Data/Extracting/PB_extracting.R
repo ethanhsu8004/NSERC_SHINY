@@ -1,4 +1,4 @@
-#Extracting from EagleFord
+#Extracting from Permian
 library(dplyr)
 library(tidyverse)
 library(httr)
@@ -13,13 +13,10 @@ rm(p, pkgs)
 code.dir = paste0(getwd())
 data.dir = paste0(getwd(), '/data/')
 
-
-
-#EAGLE FORD!
-ef_bbox = st_read("../JerryData/shapes/ShalePlays_US_EIA_Dec2021.shp") %>% 
+pb_bbox = st_read("../JerryData/shapes/ShalePlays_US_EIA_Dec2021.shp") %>% 
   filter((Basin %in% c("Permian"))) %>%
   st_bbox()
-lon_bounds = ef_bbox[c(1,3)]; lat_bounds = ef_bbox[c(2,4)]
+lon_bounds = pb_bbox[c(1,3)]; lat_bounds = pb_bbox[c(2,4)]
 
 #This is just general guidelines from https://eogdata.mines.edu/products/register/ (bottom of page)
 params <- list(
@@ -54,10 +51,10 @@ vnf.cols = c('date_mscan', 'lon_gmtco', 'lat_gmtco', 'temp_bb', 'temp_bkg',
 #end date currently
 end_date = as.Date("2023-06-15")
 
-vnf.data.exist = file.exists(paste0(code.dir, "ef_vnf/ef-vnf.rds")) #change this line
+vnf.data.exist = file.exists(paste0(code.dir, "pb_vnf/pb-vnf.rds")) #change this line
 
 if(vnf.data.exist){
-  vnf = readRDS(paste0(data.dir, "ef_vnf/ef-vnf.rds"))
+  vnf = readRDS(paste0(data.dir, "pb_vnf/pb-vnf.rds"))
   
   # start new update from date after last date in existing data
   start_date = max(vnf$file_date) + 1
@@ -85,6 +82,7 @@ if(vnf.data.exist){
 
 vnf.dates = seq(start_date, end_date, "days")
 for (date in 1:length(vnf.dates)){
+  print(date)
   url.name = paste0(vnfv30.url.pfx[1], 
                     gsub('-', '', vnf.dates[date]), vnfv30.url.pfx[2])
   gz.name = paste0(data.dir, '', basename(url.name))
